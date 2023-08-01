@@ -27,6 +27,9 @@ impl MelatoninBotState {
             sql_pool: MyPool::default(),
         }
     }
+    pub fn get_pool(&self) -> Pool<Sqlite> {
+        self.sql_pool.0.clone()
+    }
 }
 
 static POOL: OnceCell<Pool<Sqlite>> = OnceCell::const_new();
