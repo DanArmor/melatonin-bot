@@ -6,6 +6,7 @@ use sqlx::sqlite::SqlitePoolOptions;
 use sqlx::{Pool, Sqlite};
 use tokio::sync::OnceCell;
 
+// Config to keep secrets and stuff
 #[derive(Deserialize, Clone, Debug, Default)]
 pub struct Config {
     pub holodex_api_key: String,
@@ -14,6 +15,7 @@ pub struct Config {
     pub max_connections: u32,
 }
 
+// Bot state, containts config data and pool of connections
 #[derive(Debug, Clone, Default, BotState)]
 pub struct MelatoninBotState {
     config: Config,
@@ -27,13 +29,19 @@ impl MelatoninBotState {
             sql_pool: MyPool::default(),
         }
     }
+    pub fn get_telegram_bot_token(&self) -> String {
+        self.config.telegram_bot_token.clone()
+    }
     pub fn get_pool(&self) -> Pool<Sqlite> {
         self.sql_pool.0.clone()
     }
 }
 
+// Singleton to keep connections for all threads. Can't put into bot state directly, because
+// we need to implement Default trait for all fields of state
 static POOL: OnceCell<Pool<Sqlite>> = OnceCell::const_new();
 
+// Initialize database with given path and max connection amount
 pub async fn init_db(db_path: String, max_conn: u32) -> Result<(), anyhow::Error> {
     if !Sqlite::database_exists(&db_path).await.unwrap_or(false) {
         match Sqlite::create_database(&db_path).await {
@@ -51,6 +59,8 @@ pub async fn init_db(db_path: String, max_conn: u32) -> Result<(), anyhow::Error
     Ok(())
 }
 
+// Wrapper for connection pool (Pool<Sqlite>) to provide Default
+// trait implementation
 #[derive(Debug, Clone)]
 struct MyPool(Pool<Sqlite>);
 

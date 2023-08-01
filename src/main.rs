@@ -9,7 +9,10 @@ mod config;
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
-    bot_init::init_app().await?;
+    // Create bot state
+    let bot_state = bot_init::init_app().await?;
+    // Create client for mobot
+    let client = mobot::Client::new(bot_state.get_telegram_bot_token().into());
 
     Ok(())
 }
