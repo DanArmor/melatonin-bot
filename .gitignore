@@ -1,1 +1,5 @@
 /target
+/holodex-rs
+*.json
+melatonin-*
+.env

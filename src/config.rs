@@ -13,6 +13,7 @@ pub struct Config {
     pub telegram_bot_token: String,
     pub sql_connection_string: String,
     pub max_connections: u32,
+    pub timer_duration_sec: u64,
 }
 
 // Bot state, containts config data and pool of connections
@@ -31,6 +32,12 @@ impl MelatoninBotState {
     }
     pub fn get_telegram_bot_token(&self) -> String {
         self.config.telegram_bot_token.clone()
+    }
+    pub fn get_holodex_api_key(&self) -> String {
+        self.config.holodex_api_key.clone()
+    }
+    pub fn get_timer_duration_sec(&self) -> u64 {
+        self.config.timer_duration_sec.clone()
     }
     pub fn get_pool(&self) -> Pool<Sqlite> {
         self.sql_pool.0.clone()
@@ -55,6 +62,7 @@ pub async fn init_db(db_path: String, max_conn: u32) -> Result<(), anyhow::Error
         .max_connections(max_conn)
         .connect(&db_path)
         .await?;
+    sqlx::migrate!("./migrations").run(&pool).await?;
     POOL.set(pool)?;
     Ok(())
 }
