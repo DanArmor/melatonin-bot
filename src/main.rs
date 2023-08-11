@@ -1,3 +1,4 @@
+use handlers::start_handler;
 use log::{error, info};
 use main_client::MainClient;
 use mobot::API;
@@ -11,6 +12,7 @@ mod config;
 mod main_client;
 mod queries;
 mod vtuber;
+mod handlers;
 
 async fn error_handler<S: BotState>(api: Arc<API>, chat_id: i64, _: State<S>, err: anyhow::Error) {
     error!("{}", err);
@@ -55,6 +57,9 @@ async fn main() -> Result<(), anyhow::Error> {
         router.api.clone(),
         Arc::new(holodex::Client::new(&holodex_api_key)?),
     );
+
+    router.add_route(mobot::Route::Message(mobot::Matcher::BotCommand(String::from("start"))), crate::handlers::start_handler);
+
     tokio::spawn(notify_users(main_client, timer_duration_sec));
     router.start().await;
     Ok(())

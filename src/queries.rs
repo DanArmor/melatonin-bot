@@ -30,10 +30,11 @@ pub async fn insert_vtuber(
     member: &vtuber::Vtuber,
 ) -> Result<(), anyhow::Error> {
     match sqlx::query!(
-        r#"INSERT INTO vtuber (first_name, last_name, emoji, youtube_handle, youtube_channel_id)
-        VALUES (?, ?, ?, ?, ?)"#,
+        r#"INSERT INTO vtuber (first_name, last_name, emoji, wave_name, youtube_handle, youtube_channel_id)
+        VALUES (?, ?, ?, ?, ?, ?)"#,
         member.first_name,
         member.last_name,
+        member.wave_name,
         member.emoji,
         member.youtube_handle,
         member.youtube_channel_id

@@ -57,8 +57,9 @@ impl MelatoninBotState {
         let str_data = fs::read_to_string(self.config.startup_data_path.clone()).unwrap();
         let data: HashMap<String, serde_json::Value> = serde_json::from_str(&str_data).unwrap();
         let data: Vec<vtuber::VtuberWave> = serde_json::from_value(data["waves"].clone()).unwrap();
-        for wave in &data {
-            for member in &wave.members {
+        for wave in data {
+            for mut member in wave.members {
+                member.wave_name = wave.name.clone();
                 match queries::check_vtuber_exist(self.get_pool(), &member).await {
                     Ok(is_exist) => match is_exist {
                         true => (),
