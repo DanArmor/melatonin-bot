@@ -65,7 +65,9 @@ impl BotHandlerFn<HackatonBotState> for HandlerWrapper<HackatonBotState> {
             },
             Err(e) => {
                 info!("Wrapper catched err: {}", e);
-                Ok(Action::ReplyText(String::from("Ошибка со стороны сервера - попробуйте позже")))
+                Ok(Action::ReplyText(String::from(
+                    "Ошибка со стороны сервера - попробуйте позже",
+                )))
             }
         }
     }
