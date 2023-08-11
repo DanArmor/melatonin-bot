@@ -1,4 +1,5 @@
 use log::{error, info};
+use main_client::MainClient;
 use mobot::API;
 
 use mobot::handler::{BotState, State};
@@ -17,6 +18,28 @@ async fn error_handler<S: BotState>(api: Arc<API>, chat_id: i64, _: State<S>, er
 
 // TODO : enforce constrains for foreign keys for sqlite by hand
 
+async fn notify_users(main_client: MainClient, timer_duration_sec: u64) {
+    let mut interval = tokio::time::interval(std::time::Duration::from_secs(timer_duration_sec));
+    loop {
+        interval.tick().await;
+        info!("Hello from timer");
+        let results = main_client.get_videos();
+        for stream in results {
+            match stream.channel {
+                holodex::model::VideoChannel::Id(id) => info!("Res: id {}", id),
+                holodex::model::VideoChannel::Min(min_info) => info!(
+                    "Res: {} {} / {}",
+                    stream.title,
+                    min_info.name,
+                    min_info
+                        .english_name
+                        .unwrap_or(String::from("no english name"))
+                ),
+            }
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
     // Create bot state
@@ -32,28 +55,7 @@ async fn main() -> Result<(), anyhow::Error> {
         router.api.clone(),
         Arc::new(holodex::Client::new(&holodex_api_key)?),
     );
-    tokio::spawn(async move {
-        let mut interval =
-            tokio::time::interval(std::time::Duration::from_secs(timer_duration_sec));
-        loop {
-            interval.tick().await;
-            info!("Hello from timer");
-            let results = main_client.get_videos();
-            for stream in results {
-                match stream.channel {
-                    holodex::model::VideoChannel::Id(id) => info!("Res: id {}", id),
-                    holodex::model::VideoChannel::Min(min_info) => info!(
-                        "Res: {} {} / {}",
-                        stream.title,
-                        min_info.name,
-                        min_info
-                            .english_name
-                            .unwrap_or(String::from("no english name"))
-                    ),
-                }
-            }
-        }
-    });
+    tokio::spawn(notify_users(main_client, timer_duration_sec));
     router.start().await;
     Ok(())
 }
