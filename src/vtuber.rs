@@ -3,6 +3,8 @@ use serde;
 
 #[derive(Deserialize, Clone, Debug, Default)]
 pub struct Vtuber {
+    #[serde(skip)]
+    pub id: i64,
     pub first_name: String,
     pub last_name: String,
     #[serde(skip)]
