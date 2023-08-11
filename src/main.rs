@@ -8,6 +8,8 @@ use std::sync::Arc;
 mod bot_init;
 mod config;
 mod main_client;
+mod queries;
+mod vtuber;
 
 async fn error_handler<S: BotState>(api: Arc<API>, chat_id: i64, _: State<S>, err: anyhow::Error) {
     error!("{}", err);

@@ -28,5 +28,6 @@ pub async fn init_app() -> anyhow::Result<MelatoninBotState> {
 
     init_db(config.sql_connection_string.clone(), config.max_connections).await?;
     let state = init_bot_state(config);
+    state.init_startup_data().await?;
     Ok(state)
 }

@@ -1,10 +1,20 @@
 use log::{debug, error, info};
 use mobot::BotState;
 use serde::Deserialize;
+
 use sqlx::migrate::MigrateDatabase;
+use sqlx::sqlite::SqlitePool;
 use sqlx::sqlite::SqlitePoolOptions;
-use sqlx::{Pool, Sqlite};
+use sqlx::Pool;
+use sqlx::Sqlite;
+
+use std::collections::HashMap;
+use std::fs;
 use tokio::sync::OnceCell;
+
+use crate::queries;
+use crate::queries::insert_vtuber;
+use crate::vtuber;
 
 // Config to keep secrets and stuff
 #[derive(Deserialize, Clone, Debug, Default)]
@@ -12,6 +22,7 @@ pub struct Config {
     pub holodex_api_key: String,
     pub telegram_bot_token: String,
     pub sql_connection_string: String,
+    pub startup_data_path: String,
     pub max_connections: u32,
     pub timer_duration_sec: u64,
 }
@@ -41,6 +52,23 @@ impl MelatoninBotState {
     }
     pub fn get_pool(&self) -> Pool<Sqlite> {
         self.sql_pool.0.clone()
+    }
+    pub async fn init_startup_data(&self) -> Result<(), anyhow::Error> {
+        let str_data = fs::read_to_string(self.config.startup_data_path.clone()).unwrap();
+        let data: HashMap<String, serde_json::Value> = serde_json::from_str(&str_data).unwrap();
+        let data: Vec<vtuber::VtuberWave> = serde_json::from_value(data["waves"].clone()).unwrap();
+        for wave in &data {
+            for member in &wave.members {
+                match queries::check_vtuber_exist(self.get_pool(), &member).await {
+                    Ok(is_exist) => match is_exist {
+                        true => (),
+                        false => insert_vtuber(self.get_pool(), &member).await?,
+                    },
+                    Err(e) => panic!("{}", e),
+                }
+            }
+        }
+        Ok(())
     }
 }
 
