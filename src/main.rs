@@ -1,4 +1,4 @@
-use handlers::start_handler;
+use handlers::{report_action, start_handler};
 use log::{error, info};
 use main_client::MainClient;
 use mobot::API;
@@ -9,10 +9,11 @@ use std::sync::Arc;
 
 mod bot_init;
 mod config;
+mod handlers;
 mod main_client;
+mod markup;
 mod queries;
 mod vtuber;
-mod handlers;
 
 async fn error_handler<S: BotState>(api: Arc<API>, chat_id: i64, _: State<S>, err: anyhow::Error) {
     error!("{}", err);
@@ -57,8 +58,48 @@ async fn main() -> Result<(), anyhow::Error> {
         router.api.clone(),
         Arc::new(holodex::Client::new(&holodex_api_key)?),
     );
-
-    router.add_route(mobot::Route::Message(mobot::Matcher::BotCommand(String::from("start"))), crate::handlers::start_handler);
+    router
+        .add_route(
+            mobot::Route::Message(mobot::Matcher::BotCommand(String::from("start"))),
+            |e, s| async move { report_action(e, s, "start_handler").await },
+        )
+        .add_route(
+            mobot::Route::Message(mobot::Matcher::BotCommand(String::from("start"))),
+            crate::handlers::start_handler,
+        );
+    router
+        .add_route(
+            mobot::Route::Message(mobot::Matcher::BotCommand(String::from("waves"))),
+            |e, s| async move { report_action(e, s, "info_handler").await },
+        )
+        .add_route(
+            mobot::Route::Message(mobot::Matcher::BotCommand(String::from("waves"))),
+            crate::handlers::info_handler,
+        );
+    router
+        .add_route(
+            mobot::Route::CallbackQuery(mobot::Matcher::Prefix(String::from("wave_"))),
+            |e, s| async move { report_action(e, s, "wave_request").await },
+        )
+        .add_route(
+            mobot::Route::CallbackQuery(mobot::Matcher::Prefix(String::from("wave_"))),
+            crate::handlers::wave_handler,
+        );
+    router
+        .add_route(
+            mobot::Route::CallbackQuery(mobot::Matcher::Prefix(String::from("member_"))),
+            |e, s| async move { report_action(e, s, "member_request").await },
+        )
+        .add_route(
+            mobot::Route::CallbackQuery(mobot::Matcher::Prefix(String::from("member_"))),
+            crate::handlers::member_handler,
+        );
+    // mobot::Route::Default doesn't work in that case 
+    // router
+    //     .add_route(mobot::Route::Message(mobot::Matcher::Any), |e, s| async move {
+    //         report_action(e, s, "any_handler").await
+    //     })
+    //     .add_route(mobot::Route::Message(mobot::Matcher::Any), crate::handlers::any_handler);
 
     tokio::spawn(notify_users(main_client, timer_duration_sec));
     router.start().await;
