@@ -1,7 +1,6 @@
 use crate::config::MelatoninBotState;
 use crate::markup::{self, members_markup};
 use crate::queries;
-use crate::vtuber::Vtuber;
 use anyhow::anyhow;
 use log::info;
 use mobot::api::{EditMessageReplyMarkupRequest, EditMessageTextRequest, SendMessageRequest};
@@ -31,13 +30,28 @@ pub async fn start_handler(e: Event, s: State<MelatoninBotState>) -> Result<Acti
     .api
     .send_message(
         &SendMessageRequest::new(e.update.chat_id()?, "Здравствуйте, данный бот напоминает о стримах выбранных вами втуберов Nijisanji EN за 15-20 минут до начала стрима. Выберите волну")
-    .with_reply_markup(markup::waves_markup(s.get().read().await.get_pool()).await)).await?;
+    .with_reply_markup(markup::waves_markup(s.get().read().await.get_pool(), id).await)).await?;
     let pool = s.get().read().await.get_pool();
     let user = e.update.from_user().unwrap();
     match queries::insert_user(pool, user, e.update.chat_id().unwrap()).await {
         Ok(_) => Ok(Action::Done),
         Err(e) => Err(anyhow!(e)),
     }
+}
+
+pub async fn about_handler(e: Event, s: State<MelatoninBotState>) -> Result<Action, anyhow::Error> {
+    let id = get_user_id(&e)?;
+    e.api
+        .send_message(&SendMessageRequest::new(
+            e.update.chat_id()?,
+            "Бот, напоминающий о стримах выбранных втуберов NijiEN за 15-20 минут до начала\n\
+            Жалобы/предложения - @DanArmor\n\
+            Код бота: https://github.com/DanArmor/melatonin-bot\n\
+            Если что-то не работает - попробуйте команду /start\n\
+            Если и это не помогло - напишите админу",
+        ))
+        .await?;
+    Ok(Action::Done)
 }
 
 pub async fn any_handler(e: Event, s: State<MelatoninBotState>) -> Result<Action, anyhow::Error> {
@@ -57,7 +71,7 @@ pub async fn info_handler(e: Event, s: State<MelatoninBotState>) -> Result<Actio
     .api
     .send_message(
         &SendMessageRequest::new(e.update.chat_id()?, "Данный бот напоминает о стримах выбранных вами втуберов Nijisanji EN за 15-20 минут до начала стрима. Выберите волну")
-    .with_reply_markup(markup::waves_markup(s.get().read().await.get_pool()).await)).await?;
+    .with_reply_markup(markup::waves_markup(s.get().read().await.get_pool(), id).await)).await?;
     Ok(Action::Done)
 }
 
@@ -107,7 +121,7 @@ pub async fn member_handler(
             e.api
                 .edit_message_reply_markup(
                     &EditMessageReplyMarkupRequest::new(
-                        markup::waves_markup(s.get().read().await.get_pool()).await,
+                        markup::waves_markup(s.get().read().await.get_pool(), id).await,
                     )
                     .with_chat_id(e.update.chat_id()?)
                     .with_message_id(e.update.message_id()?),

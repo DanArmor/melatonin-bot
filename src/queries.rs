@@ -145,6 +145,48 @@ pub async fn get_wave_members(
     }
 }
 
+#[derive(Debug)]
+pub struct WaveAmount {
+    pub wave_name: String,
+    pub amount: i64,
+    pub max_amount: i64,
+}
+
+pub async fn get_amount_in_waves(pool: Pool<Sqlite>) -> Result<Vec<WaveAmount>, anyhow::Error> {
+    match sqlx::query(
+        r#"
+    SELECT
+        vtuber.wave_name,
+        COUNT(user_vtuber.id) as 'amount',
+        COUNT(vtuber.id) as 'max_amount'
+    FROM
+        vtuber
+        LEFT JOIN (
+        SELECT
+            *
+        FROM
+            user_vtuber
+        WHERE
+            user_vtuber.user_id = 341706865
+        ) user_vtuber ON user_vtuber.vtuber_id = vtuber.id
+    GROUP BY
+        vtuber.wave_name;"#,
+    )
+    .fetch_all(&pool)
+    .await
+    {
+        Ok(members) => Ok(members
+            .into_iter()
+            .map(|row| WaveAmount {
+                wave_name: row.get("wave_name"),
+                amount: row.get("amount"),
+                max_amount: row.get("max_amount"),
+            })
+            .collect()),
+        Err(e) => Err(anyhow!(e)),
+    }
+}
+
 pub async fn update_user_vtuber(
     pool: Pool<Sqlite>,
     tg_user_id: i64,

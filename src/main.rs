@@ -14,13 +14,12 @@ mod handlers;
 mod main_client;
 mod markup;
 mod queries;
-mod vtuber;
 mod user;
+mod vtuber;
 
 async fn error_handler<S: BotState>(api: Arc<API>, chat_id: i64, _: State<S>, err: anyhow::Error) {
     error!("{}", err);
 }
-
 
 async fn notify_users(main_client: MainClient, timer_duration_sec: u64) {
     let mut interval = tokio::time::interval(std::time::Duration::from_secs(timer_duration_sec));
@@ -56,11 +55,21 @@ async fn main() -> Result<(), anyhow::Error> {
     let mut router = mobot::Router::<config::MelatoninBotState>::new(client)
         .with_error_handler(error_handler)
         .with_state(bot_state);
-    
-    let commands = vec![BotCommand {
-        command: "waves".into(),
-        description: "Show list of waves".into(),
-    }];
+
+    let commands = vec![
+        BotCommand {
+            command: "start".into(),
+            description: "Start of the conversation".into(),
+        },
+        BotCommand {
+            command: "waves".into(),
+            description: "Show list of waves".into(),
+        },
+        BotCommand {
+            command: "about".into(),
+            description: "Information about the bot".into(),
+        },
+    ];
     router
         .api
         .set_my_commands(&mobot::api::SetMyCommandsRequest {
@@ -83,6 +92,15 @@ async fn main() -> Result<(), anyhow::Error> {
         .add_route(
             mobot::Route::Message(mobot::Matcher::BotCommand(String::from("start"))),
             crate::handlers::start_handler,
+        );
+    router
+        .add_route(
+            mobot::Route::Message(mobot::Matcher::BotCommand(String::from("about"))),
+            |e, s| async move { report_action(e, s, "about_handler").await },
+        )
+        .add_route(
+            mobot::Route::Message(mobot::Matcher::BotCommand(String::from("about"))),
+            crate::handlers::about_handler,
         );
     router
         .add_route(

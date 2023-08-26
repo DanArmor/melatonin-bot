@@ -3,15 +3,15 @@ use sqlx::{Pool, Sqlite};
 
 use crate::queries;
 
-pub async fn waves_markup(pool: Pool<Sqlite>) -> api::ReplyMarkup {
-    let res = queries::get_waves_names(pool).await;
+pub async fn waves_markup(pool: Pool<Sqlite>, tg_user_id: i64) -> api::ReplyMarkup {
+    let res = queries::get_amount_in_waves(pool).await;
     match res {
         Ok(waves) => api::ReplyMarkup::inline_keyboard_markup(
             waves
                 .into_iter()
                 .map(|x| {
-                    vec![api::InlineKeyboardButton::from(x.clone())
-                        .with_callback_data(format!("wave_{}", x))]
+                    vec![api::InlineKeyboardButton::from(format!("{} ({}/{})", x.wave_name.clone(), x.amount, x.max_amount))
+                        .with_callback_data(format!("wave_{}", x.wave_name))]
                 })
                 .collect(),
         ),
@@ -23,7 +23,7 @@ pub async fn waves_markup(pool: Pool<Sqlite>) -> api::ReplyMarkup {
     }
 }
 
-fn get_member_status_badge(is_selected: bool) -> &'static str{
+fn get_member_status_badge(is_selected: bool) -> &'static str {
     if is_selected {
         "✅"
     } else {
@@ -44,7 +44,10 @@ pub async fn members_markup(
                 .map(|x| {
                     vec![api::InlineKeyboardButton::from(format!(
                         "{}{} {} {}",
-                        get_member_status_badge(x.is_selected), x.vtuber.first_name, x.vtuber.last_name, x.vtuber.emoji
+                        get_member_status_badge(x.is_selected),
+                        x.vtuber.first_name,
+                        x.vtuber.last_name,
+                        x.vtuber.emoji
                     ))
                     .with_callback_data(format!(
                         "member_{} {} wave_{}",

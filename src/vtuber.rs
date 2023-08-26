@@ -1,5 +1,5 @@
-use serde::Deserialize;
 use serde;
+use serde::Deserialize;
 
 #[derive(Deserialize, Clone, Debug, Default)]
 pub struct Vtuber {
