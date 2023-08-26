@@ -92,6 +92,7 @@ pub async fn init_db(db_path: String, max_conn: u32) -> Result<(), anyhow::Error
         .connect(&db_path)
         .await?;
     sqlx::migrate!("./migrations").run(&pool).await?;
+    sqlx::query!("PRAGMA foreign_keys = ON;").execute(&pool).await?;
     POOL.set(pool)?;
     Ok(())
 }
