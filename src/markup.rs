@@ -23,23 +23,37 @@ pub async fn waves_markup(pool: Pool<Sqlite>) -> api::ReplyMarkup {
     }
 }
 
-pub async fn members_markup(pool: Pool<Sqlite>, wave_name: String) -> api::ReplyMarkup {
-    let res = queries::get_wave_members(pool, wave_name).await;
+fn get_member_status_badge(is_selected: bool) -> &'static str{
+    if is_selected {
+        "✅"
+    } else {
+        ""
+    }
+}
+
+pub async fn members_markup(
+    pool: Pool<Sqlite>,
+    tg_user_id: i64,
+    wave_name: String,
+) -> api::ReplyMarkup {
+    let res = queries::get_wave_members(pool, tg_user_id, wave_name).await;
     match res {
         Ok(members) => {
             let mut members = members
                 .into_iter()
                 .map(|x| {
                     vec![api::InlineKeyboardButton::from(format!(
-                        "{} {} {}",
-                        x.first_name, x.last_name, x.emoji
+                        "{}{} {} {}",
+                        get_member_status_badge(x.is_selected), x.vtuber.first_name, x.vtuber.last_name, x.vtuber.emoji
                     ))
-                    .with_callback_data(format!("member_{}{}", x.first_name, x.last_name))]
+                    .with_callback_data(format!(
+                        "member_{} {} wave_{}",
+                        x.vtuber.first_name, x.vtuber.last_name, x.vtuber.wave_name
+                    ))]
                 })
                 .collect::<Vec<_>>();
-            members.push(vec![
-                api::InlineKeyboardButton::from("Назад").with_callback_data("member_back")
-            ]);
+            members.push(vec![api::InlineKeyboardButton::from("Назад")
+                .with_callback_data("member_back wave_none")]);
             api::ReplyMarkup::inline_keyboard_markup(members)
         }
         Err(e) => {
