@@ -45,7 +45,7 @@ pub async fn insert_vtuber(
     .await
     {
         Ok(_) => Ok(()),
-        Err(_) => Ok(()),
+        Err(e) => Err(anyhow!(e)),
     }
 }
 
