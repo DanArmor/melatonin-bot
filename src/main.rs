@@ -3,6 +3,7 @@ use log::{error, info};
 use main_client::MainClient;
 use mobot::API;
 
+use mobot::api::BotCommand;
 use mobot::handler::{BotState, State};
 
 use std::sync::Arc;
@@ -14,12 +15,12 @@ mod main_client;
 mod markup;
 mod queries;
 mod vtuber;
+mod user;
 
 async fn error_handler<S: BotState>(api: Arc<API>, chat_id: i64, _: State<S>, err: anyhow::Error) {
     error!("{}", err);
 }
 
-// TODO : enforce constrains for foreign keys for sqlite by hand
 
 async fn notify_users(main_client: MainClient, timer_duration_sec: u64) {
     let mut interval = tokio::time::interval(std::time::Duration::from_secs(timer_duration_sec));
@@ -50,14 +51,30 @@ async fn main() -> Result<(), anyhow::Error> {
     let holodex_api_key = bot_state.get_holodex_api_key();
     let timer_duration_sec = bot_state.get_timer_duration_sec();
     // Create client for mobot
-    let client = mobot::Client::new(bot_state.get_telegram_bot_token().into());
+
+    let client = mobot::Client::new(bot_state.get_telegram_bot_token());
     let mut router = mobot::Router::<config::MelatoninBotState>::new(client)
         .with_error_handler(error_handler)
         .with_state(bot_state);
+    
+    let commands = vec![BotCommand {
+        command: "waves".into(),
+        description: "Show list of waves".into(),
+    }];
+    router
+        .api
+        .set_my_commands(&mobot::api::SetMyCommandsRequest {
+            commands,
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+
     let main_client = main_client::MainClient::new(
         router.api.clone(),
         Arc::new(holodex::Client::new(&holodex_api_key)?),
     );
+
     router
         .add_route(
             mobot::Route::Message(mobot::Matcher::BotCommand(String::from("start"))),
@@ -94,7 +111,7 @@ async fn main() -> Result<(), anyhow::Error> {
             mobot::Route::CallbackQuery(mobot::Matcher::Prefix(String::from("member_"))),
             crate::handlers::member_handler,
         );
-    // mobot::Route::Default doesn't work in that case 
+    // mobot::Route::Default doesn't work in that case
     // router
     //     .add_route(mobot::Route::Message(mobot::Matcher::Any), |e, s| async move {
     //         report_action(e, s, "any_handler").await
