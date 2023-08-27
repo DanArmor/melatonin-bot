@@ -1,7 +1,7 @@
 use crate::{config::MyPool, reported_stream::ReportedStream};
 use chrono;
 use chrono::Timelike;
-use log::{debug};
+use log::debug;
 use mobot::api::{ParseMode, SendPhotoRequest};
 use sqlx::{Pool, Sqlite};
 use std::sync::Arc;
