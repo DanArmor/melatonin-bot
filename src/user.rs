@@ -1,6 +1,7 @@
-use serde::Deserialize;
 use serde;
+use serde::Deserialize;
 
+// User struct
 #[derive(Deserialize, Clone, Debug, Default)]
 pub struct User {
     #[serde(skip)]

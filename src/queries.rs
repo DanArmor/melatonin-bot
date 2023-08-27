@@ -10,6 +10,7 @@ use std::collections::HashMap;
 use crate::vtuber;
 use crate::vtuber::Vtuber;
 
+// Insers user into db
 pub async fn insert_user(
     pool: Pool<Sqlite>,
     user: &mobot::api::User,
@@ -32,7 +33,8 @@ pub async fn insert_user(
     }
 }
 
-pub async fn check_vtuber_exist(
+// Is vtuber in database
+pub async fn is_vtuber_exist(
     pool: Pool<Sqlite>,
     member: &vtuber::Vtuber,
 ) -> Result<bool, anyhow::Error> {
@@ -53,7 +55,8 @@ pub async fn check_vtuber_exist(
     }
 }
 
-pub async fn check_reported_stream(
+// Check, if were users notified about the stream
+pub async fn is_stream_reported(
     pool: Pool<Sqlite>,
     video: &holodex::model::Video,
 ) -> Result<Option<crate::reported_stream::ReportedStream>, anyhow::Error> {
@@ -75,6 +78,7 @@ pub async fn check_reported_stream(
     }
 }
 
+// Insert stream, that users were notified about
 pub async fn insert_reported_stream(
     pool: Pool<Sqlite>,
     video: &holodex::model::Video,
@@ -96,6 +100,7 @@ pub async fn insert_reported_stream(
     }
 }
 
+// Insert vtuber into db
 pub async fn insert_vtuber(
     pool: Pool<Sqlite>,
     member: &vtuber::Vtuber,
@@ -118,24 +123,13 @@ pub async fn insert_vtuber(
     }
 }
 
-pub async fn get_waves_names(pool: Pool<Sqlite>) -> Result<Vec<String>, anyhow::Error> {
-    match sqlx::query(r#"SELECT wave_name as name FROM vtuber GROUP BY wave_name"#)
-        .fetch_all(&pool)
-        .await
-    {
-        Ok(members) => Ok(members
-            .into_iter()
-            .map(|row| row.get::<String, _>("name"))
-            .collect()),
-        Err(e) => Err(anyhow!(e)),
-    }
-}
-
+// Vtuber struct and status - was it selected by user or not
 pub struct UserVtubers {
     pub vtuber: vtuber::Vtuber,
     pub is_selected: bool,
 }
 
+// Convert sql-row into UserVtubers
 fn user_vtubers_from_row(row: SqliteRow) -> UserVtubers {
     let vtuber = Vtuber {
         id: row.get("id"),
@@ -152,6 +146,7 @@ fn user_vtubers_from_row(row: SqliteRow) -> UserVtubers {
     }
 }
 
+// Get wave members and status - were they selected by user or not
 pub async fn get_wave_members(
     pool: Pool<Sqlite>,
     tg_user_id: i64,
@@ -190,6 +185,7 @@ pub async fn get_wave_members(
     }
 }
 
+// Wave, amount of selected members by user and max members amount
 #[derive(Debug)]
 pub struct WaveAmount {
     pub wave_name: String,
@@ -200,7 +196,7 @@ pub struct WaveAmount {
 // TODO: find some other solution
 // Map waves to debute order
 lazy_static! {
-    static ref NijiENMap: HashMap<&'static str, i64> = vec![
+    static ref NIJIEN_MAP: HashMap<&'static str, i64> = vec![
         ("LazuLight", 1),
         ("OBSYDIA", 2),
         ("Ethyria", 3),
@@ -214,6 +210,7 @@ lazy_static! {
     .collect();
 }
 
+// Get waves, amount of selected members and max amount in wave
 pub async fn get_amount_in_waves(
     pool: Pool<Sqlite>,
     tg_user_id: i64,
@@ -252,7 +249,7 @@ pub async fn get_amount_in_waves(
                 .collect::<Vec<WaveAmount>>();
             // Sort by debut order
             waves.sort_by(|x, y| {
-                NijiENMap[x.wave_name.as_str()].cmp(&NijiENMap[y.wave_name.as_str()])
+                NIJIEN_MAP[x.wave_name.as_str()].cmp(&NIJIEN_MAP[y.wave_name.as_str()])
             });
             Ok(waves)
         }
@@ -260,6 +257,7 @@ pub async fn get_amount_in_waves(
     }
 }
 
+// Update selection for user
 pub async fn update_user_vtuber(
     pool: Pool<Sqlite>,
     tg_user_id: i64,

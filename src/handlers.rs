@@ -8,22 +8,25 @@ use mobot::handler::State;
 use mobot::*;
 use std::future::Future;
 
+// Get user telegram id
 fn get_user_id(e: &Event) -> Result<i64, anyhow::Error> {
     Ok(e.update.from_user()?.id)
 }
 
+// Log every request from user
 pub fn report_action<'a>(
     e: Event,
     s: State<MelatoninBotState>,
     text: &'a str,
 ) -> impl Future<Output = Result<Action, anyhow::Error>> + 'a {
-    (|e: Event, s: State<MelatoninBotState>| async move {
+    (|e: Event, _: State<MelatoninBotState>| async move {
         let id = get_user_id(&e)?;
         info!("UserID<{}>. Action<{}>", id, text);
         Ok(Action::Next)
     })(e, s)
 }
 
+// Handle /start command. Send greeting with waves markup
 pub async fn start_handler(e: Event, s: State<MelatoninBotState>) -> Result<Action, anyhow::Error> {
     let id = get_user_id(&e)?;
     e
@@ -39,8 +42,8 @@ pub async fn start_handler(e: Event, s: State<MelatoninBotState>) -> Result<Acti
     }
 }
 
-pub async fn about_handler(e: Event, s: State<MelatoninBotState>) -> Result<Action, anyhow::Error> {
-    let id = get_user_id(&e)?;
+// Handle /about command. Send info about bot
+pub async fn about_handler(e: Event, _: State<MelatoninBotState>) -> Result<Action, anyhow::Error> {
     e.api
         .send_message(&SendMessageRequest::new(
             e.update.chat_id()?,
@@ -54,17 +57,7 @@ pub async fn about_handler(e: Event, s: State<MelatoninBotState>) -> Result<Acti
     Ok(Action::Done)
 }
 
-pub async fn any_handler(e: Event, s: State<MelatoninBotState>) -> Result<Action, anyhow::Error> {
-    let id = get_user_id(&e)?;
-    e.api
-        .send_message(&SendMessageRequest::new(
-            e.update.chat_id()?,
-            "Команда не распознана",
-        ))
-        .await?;
-    Ok(Action::Done)
-}
-
+// Handle /waves command. Send generic message with waves markup
 pub async fn info_handler(e: Event, s: State<MelatoninBotState>) -> Result<Action, anyhow::Error> {
     let id = get_user_id(&e)?;
     e
@@ -75,6 +68,7 @@ pub async fn info_handler(e: Event, s: State<MelatoninBotState>) -> Result<Actio
     Ok(Action::Done)
 }
 
+// Handle click on wave button. Show members of the wave
 pub async fn wave_handler(e: Event, s: State<MelatoninBotState>) -> Result<Action, anyhow::Error> {
     let id = get_user_id(&e)?;
     let wave_name = e.update.get_callback_query()?.data.clone().unwrap();
@@ -98,6 +92,7 @@ pub async fn wave_handler(e: Event, s: State<MelatoninBotState>) -> Result<Actio
     Ok(Action::Done)
 }
 
+// Handle click on member button or 'back' button. Select member or return to waves list
 pub async fn member_handler(
     e: Event,
     s: State<MelatoninBotState>,

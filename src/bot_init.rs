@@ -1,5 +1,5 @@
 use crate::config::*;
-use log::{debug, error, info};
+use log::debug;
 use std::fs;
 
 // Initialize env_logger for the app
@@ -9,20 +9,23 @@ pub fn init_logger() {
     debug!("Logger initialized.");
 }
 
-// Creates new bot state from config
+// Create new bot state from config
 pub fn init_bot_state(config: Config) -> MelatoninBotState {
     let state = MelatoninBotState::new(config);
+    debug!("Bot state initialized");
     state
 }
 
-// Reads config from disk and creates according struct
+// Read config from disk and create according struct
 fn init_config() -> Config {
     let data = fs::read_to_string("dev.json").unwrap();
+    debug!("Config was read from file");
     serde_json::from_str(&data).unwrap()
 }
 
-// Initializes entire app and returns bot state
+// Initialize entire app and return bot state
 pub async fn init_app() -> anyhow::Result<MelatoninBotState> {
+    debug!("Initializing app. . .");
     init_logger();
     let config = init_config();
 

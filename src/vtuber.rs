@@ -1,6 +1,7 @@
 use serde;
 use serde::Deserialize;
 
+// Vtuber struct
 #[derive(Deserialize, Clone, Debug, Default)]
 pub struct Vtuber {
     #[serde(skip)]
@@ -14,6 +15,7 @@ pub struct Vtuber {
     pub youtube_handle: String,
 }
 
+// Represents vtuber wave
 #[derive(Deserialize, Clone, Debug, Default)]
 pub struct VtuberWave {
     pub name: String,

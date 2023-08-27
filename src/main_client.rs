@@ -1,8 +1,8 @@
 use crate::{config::MyPool, reported_stream::ReportedStream};
 use chrono;
 use chrono::Timelike;
-use log::{error, debug, info};
-use mobot::api::{SendPhotoRequest, ParseMode};
+use log::{debug, error, info};
+use mobot::api::{ParseMode, SendPhotoRequest};
 use sqlx::{Pool, Sqlite};
 use std::sync::Arc;
 
@@ -12,13 +12,18 @@ use holodex::model::{
 };
 
 pub struct MainClient {
+    // Telegram api client
     pub tg_api: Arc<mobot::API>,
+    // Holodex api client
     pub holodex_api: Arc<holodex::Client>,
+    // Global sql connection pool
     sql_pool: MyPool,
 }
 
 pub struct VtuberVideo {
+    // Vtuber, associated with video
     pub vtuber: crate::vtuber::Vtuber,
+    // Video of the vtuber
     pub video: holodex::model::Video,
 }
 
@@ -30,15 +35,17 @@ impl MainClient {
             sql_pool: MyPool::default(),
         }
     }
+    // Get sql pool
     pub fn get_pool(&self) -> Pool<Sqlite> {
         self.sql_pool.0.clone()
     }
+    // Get stream, that will start soon
     pub fn get_videos(&self) -> Vec<holodex::model::Video> {
         let filter = VideoFilterBuilder::new()
             .organisation(Organisation::Nijisanji)
             .language(&[Language::English])
             .video_type(VideoType::Stream)
-            .max_upcoming_hours(5)
+            .max_upcoming_hours(1)
             .include(&[ExtraVideoInfo::Description, ExtraVideoInfo::ChannelStats])
             .sort_by(VideoSortingCriteria::StartScheduled)
             .status(&[holodex::model::VideoStatus::Upcoming])
@@ -50,10 +57,11 @@ impl MainClient {
             .into_iter()
             .filter(|x| {
                 x.available_at.naive_utc() - chrono::Utc::now().naive_utc()
-                    < chrono::Duration::minutes(500)
+                    < chrono::Duration::minutes(22)
             })
             .collect()
     }
+    // Remove passed streams that users have been notified about
     pub async fn clean_reported_streams(&self) {
         let reported_streams = sqlx::query_as!(ReportedStream, "SELECT * FROM reported_stream")
             .fetch_all(&self.get_pool())
@@ -69,6 +77,7 @@ impl MainClient {
             }
         }
     }
+    // Associate fetched videos with vtubers. Drop videos, that don't belong to any vtuber in db
     pub async fn associate_video_vtuber(&self) -> Vec<VtuberVideo> {
         // Fetch vector of vtubers
         let vtubers = sqlx::query_as!(crate::vtuber::Vtuber, "SELECT * FROM vtuber")
@@ -93,6 +102,7 @@ impl MainClient {
             })
             .collect()
     }
+    // Notify all subscribed users about the stream
     pub async fn send_notification(&self, stream: VtuberVideo) {
         // Get all users, that subscribed to this vtuber
         let users = sqlx::query_as!(
@@ -103,7 +113,7 @@ impl MainClient {
         .fetch_all(&self.get_pool())
         .await
         .unwrap();
-        
+
         // Notify every user
         for user in &users {
             // Get GMT+3 datetime
@@ -137,13 +147,9 @@ impl MainClient {
             debug!("User-notify: {:?}", res);
         }
         if !users.is_empty() {
-            crate::queries::insert_reported_stream(
-                self.get_pool(),
-                &stream.video,
-                &stream.vtuber,
-            )
-            .await
-            .unwrap();
+            crate::queries::insert_reported_stream(self.get_pool(), &stream.video, &stream.vtuber)
+                .await
+                .unwrap();
         }
     }
 }

@@ -1,5 +1,5 @@
 use handlers::report_action;
-use log::{error, info, debug};
+use log::{debug, error, info};
 use main_client::MainClient;
 use mobot::API;
 
@@ -18,10 +18,12 @@ mod reported_stream;
 mod user;
 mod vtuber;
 
-async fn error_handler<S: BotState>(api: Arc<API>, chat_id: i64, _: State<S>, err: anyhow::Error) {
+// Basic error handler
+async fn error_handler<S: BotState>(_: Arc<API>, _: i64, _: State<S>, err: anyhow::Error) {
     error!("{}", err);
 }
 
+// Fetch streams in interval and notify users, when some stream will start soon
 async fn notify_users(main_client: MainClient, timer_duration_sec: u64) {
     let mut interval = tokio::time::interval(std::time::Duration::from_secs(timer_duration_sec));
     loop {
@@ -42,7 +44,7 @@ async fn notify_users(main_client: MainClient, timer_duration_sec: u64) {
                 ),
             }
 
-            match queries::check_reported_stream(main_client.get_pool(), &stream.video)
+            match queries::is_stream_reported(main_client.get_pool(), &stream.video)
                 .await
                 .unwrap()
             {
@@ -72,10 +74,6 @@ async fn main() -> Result<(), anyhow::Error> {
 
     let commands = vec![
         BotCommand {
-            command: "start".into(),
-            description: "Start of the conversation".into(),
-        },
-        BotCommand {
             command: "waves".into(),
             description: "Show list of waves".into(),
         },
@@ -83,7 +81,12 @@ async fn main() -> Result<(), anyhow::Error> {
             command: "about".into(),
             description: "Information about the bot".into(),
         },
+        BotCommand {
+            command: "start".into(),
+            description: "Start of the conversation".into(),
+        },
     ];
+    // Create router
     router
         .api
         .set_my_commands(&mobot::api::SetMyCommandsRequest {
@@ -93,11 +96,13 @@ async fn main() -> Result<(), anyhow::Error> {
         .await
         .unwrap();
 
+    // Create client for fetching videos and notifying users
     let main_client = main_client::MainClient::new(
         router.api.clone(),
         Arc::new(holodex::Client::new(&holodex_api_key)?),
     );
 
+    // Add routes
     router
         .add_route(
             mobot::Route::Message(mobot::Matcher::BotCommand(String::from("start"))),
@@ -143,14 +148,9 @@ async fn main() -> Result<(), anyhow::Error> {
             mobot::Route::CallbackQuery(mobot::Matcher::Prefix(String::from("member_"))),
             crate::handlers::member_handler,
         );
-    // mobot::Route::Default doesn't work in that case
-    // router
-    //     .add_route(mobot::Route::Message(mobot::Matcher::Any), |e, s| async move {
-    //         report_action(e, s, "any_handler").await
-    //     })
-    //     .add_route(mobot::Route::Message(mobot::Matcher::Any), crate::handlers::any_handler);
-
+    // Start notify-thread
     tokio::spawn(notify_users(main_client, timer_duration_sec));
+    // Start bot
     router.start().await;
     Ok(())
 }
