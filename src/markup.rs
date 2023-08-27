@@ -4,7 +4,7 @@ use sqlx::{Pool, Sqlite};
 use crate::queries;
 
 pub async fn waves_markup(pool: Pool<Sqlite>, tg_user_id: i64) -> api::ReplyMarkup {
-    let res = queries::get_amount_in_waves(pool).await;
+    let res = queries::get_amount_in_waves(pool, tg_user_id).await;
     match res {
         Ok(waves) => api::ReplyMarkup::inline_keyboard_markup(
             waves

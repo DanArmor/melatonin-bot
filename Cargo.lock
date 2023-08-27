@@ -1010,6 +1010,7 @@ dependencies = [
  "chrono-tz",
  "env_logger",
  "holodex",
+ "lazy_static",
  "log",
  "mobot",
  "serde",

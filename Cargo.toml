@@ -18,6 +18,7 @@ mobot = "0.3.9"
 holodex = "0.3.1"
 chrono = {version = "0.4.26", features = ["serde"]}
 chrono-tz = "0.8.3"
+lazy_static = "1.4.0"
 
 [patch.crates-io]
 holodex = {path = 'dep/holodex-rs'}

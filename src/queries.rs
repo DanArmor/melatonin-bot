@@ -1,9 +1,11 @@
 use anyhow::anyhow;
+use lazy_static::lazy_static;
 use sqlx::error;
 use sqlx::sqlite::SqliteRow;
 use sqlx::Pool;
 use sqlx::Row;
 use sqlx::Sqlite;
+use std::collections::HashMap;
 
 use crate::vtuber;
 use crate::vtuber::Vtuber;
@@ -195,7 +197,27 @@ pub struct WaveAmount {
     pub max_amount: i64,
 }
 
-pub async fn get_amount_in_waves(pool: Pool<Sqlite>) -> Result<Vec<WaveAmount>, anyhow::Error> {
+// TODO: find some other solution
+// Map waves to debute order
+lazy_static! {
+    static ref NijiENMap: HashMap<&'static str, i64> = vec![
+        ("LazuLight", 1),
+        ("OBSYDIA", 2),
+        ("Ethyria", 3),
+        ("Luxiem", 4),
+        ("Noctyx", 5),
+        ("ILUNA", 6),
+        ("XSOLEIL", 7),
+        ("Krisis", 8),
+    ]
+    .into_iter()
+    .collect();
+}
+
+pub async fn get_amount_in_waves(
+    pool: Pool<Sqlite>,
+    tg_user_id: i64,
+) -> Result<Vec<WaveAmount>, anyhow::Error> {
     match sqlx::query(
         r#"
     SELECT
@@ -210,22 +232,30 @@ pub async fn get_amount_in_waves(pool: Pool<Sqlite>) -> Result<Vec<WaveAmount>, 
         FROM
             user_vtuber
         WHERE
-            user_vtuber.user_id = 341706865
+            user_vtuber.user_id = ?
         ) user_vtuber ON user_vtuber.vtuber_id = vtuber.id
     GROUP BY
         vtuber.wave_name;"#,
     )
+    .bind(tg_user_id)
     .fetch_all(&pool)
     .await
     {
-        Ok(members) => Ok(members
-            .into_iter()
-            .map(|row| WaveAmount {
-                wave_name: row.get("wave_name"),
-                amount: row.get("amount"),
-                max_amount: row.get("max_amount"),
-            })
-            .collect()),
+        Ok(members) => {
+            let mut waves = members
+                .into_iter()
+                .map(|row| WaveAmount {
+                    wave_name: row.get("wave_name"),
+                    amount: row.get("amount"),
+                    max_amount: row.get("max_amount"),
+                })
+                .collect::<Vec<WaveAmount>>();
+            // Sort by debut order
+            waves.sort_by(|x, y| {
+                NijiENMap[x.wave_name.as_str()].cmp(&NijiENMap[y.wave_name.as_str()])
+            });
+            Ok(waves)
+        }
         Err(e) => Err(anyhow!(e)),
     }
 }
