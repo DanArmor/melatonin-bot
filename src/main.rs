@@ -1,5 +1,5 @@
 use handlers::report_action;
-use log::{error, info};
+use log::{error, info, debug};
 use main_client::MainClient;
 use mobot::API;
 
@@ -26,15 +26,14 @@ async fn notify_users(main_client: MainClient, timer_duration_sec: u64) {
     let mut interval = tokio::time::interval(std::time::Duration::from_secs(timer_duration_sec));
     loop {
         interval.tick().await;
-        info!("Hello from timer");
+        info!("Fetching videos");
 
         let videos = main_client.associate_video_vtuber().await;
-
+        info!("Final fetched amount: {}", videos.len());
         for stream in videos {
-            // TODO: change log
             match stream.video.channel.clone() {
-                holodex::model::VideoChannel::Id(id) => info!("Fetched stream(id): {}", id),
-                holodex::model::VideoChannel::Min(min_info) => info!(
+                holodex::model::VideoChannel::Id(id) => debug!("Fetched stream(id): {}", id),
+                holodex::model::VideoChannel::Min(min_info) => debug!(
                     "Fetched stream(min-info): {} / {}",
                     min_info.name,
                     min_info
