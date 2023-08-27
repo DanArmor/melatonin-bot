@@ -51,6 +51,49 @@ pub async fn check_vtuber_exist(
     }
 }
 
+pub async fn check_reported_stream(
+    pool: Pool<Sqlite>,
+    video: &holodex::model::Video,
+) -> Result<Option<crate::reported_stream::ReportedStream>, anyhow::Error> {
+    let video_id = video.id.to_string();
+    match sqlx::query_as!(
+        crate::reported_stream::ReportedStream,
+        r#"SELECT * FROM reported_stream
+        WHERE video_id = ?"#,
+        video_id
+    )
+    .fetch_one(&pool)
+    .await
+    {
+        Ok(stream) => Ok(Some(stream)),
+        Err(e) => match e {
+            error::Error::RowNotFound => Ok(None),
+            _ => Err(e.into()),
+        },
+    }
+}
+
+pub async fn insert_reported_stream(
+    pool: Pool<Sqlite>,
+    video: &holodex::model::Video,
+    vtuber: &vtuber::Vtuber,
+) -> Result<(), anyhow::Error> {
+    let video_id = video.id.to_string();
+    let scheduled_time = video.available_at.naive_utc();
+    match sqlx::query!(
+        "INSERT INTO reported_stream (video_id, vtuber_id, scheduled_start) VALUES (?, ?, ?)",
+        video_id,
+        vtuber.id,
+        scheduled_time
+    )
+    .execute(&pool)
+    .await
+    {
+        Ok(_) => Ok(()),
+        Err(e) => Err(anyhow!(e)),
+    }
+}
+
 pub async fn insert_vtuber(
     pool: Pool<Sqlite>,
     member: &vtuber::Vtuber,

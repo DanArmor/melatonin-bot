@@ -100,7 +100,7 @@ pub async fn init_db(db_path: String, max_conn: u32) -> Result<(), anyhow::Error
 // Wrapper for connection pool (Pool<Sqlite>) to provide Default
 // trait implementation
 #[derive(Debug, Clone)]
-struct MyPool(Pool<Sqlite>);
+pub struct MyPool(pub Pool<Sqlite>);
 
 unsafe impl Send for MyPool {}
 unsafe impl Sync for MyPool {}

@@ -1,4 +1,4 @@
-use handlers::{report_action, start_handler};
+use handlers::report_action;
 use log::{error, info};
 use main_client::MainClient;
 use mobot::API;
@@ -14,6 +14,7 @@ mod handlers;
 mod main_client;
 mod markup;
 mod queries;
+mod reported_stream;
 mod user;
 mod vtuber;
 
@@ -26,22 +27,36 @@ async fn notify_users(main_client: MainClient, timer_duration_sec: u64) {
     loop {
         interval.tick().await;
         info!("Hello from timer");
-        let results = main_client.get_videos();
-        for stream in results {
-            match stream.channel {
-                holodex::model::VideoChannel::Id(id) => info!("Res: id {}", id),
+
+        let videos = main_client.associate_video_vtuber().await;
+
+        for stream in videos {
+            // TODO: change log
+            match stream.video.channel.clone() {
+                holodex::model::VideoChannel::Id(id) => info!("Fetched stream(id): {}", id),
                 holodex::model::VideoChannel::Min(min_info) => info!(
-                    "Res: {} {} / {}",
-                    stream.title,
+                    "Fetched stream(min-info): {} / {}",
                     min_info.name,
                     min_info
                         .english_name
-                        .unwrap_or(String::from("no english name"))
+                        .unwrap_or(String::from("no english_name"))
                 ),
             }
+
+            match queries::check_reported_stream(main_client.get_pool(), &stream.video)
+                .await
+                .unwrap()
+            {
+                Some(_) => (),
+                None => main_client.send_notification(stream).await,
+            }
         }
+        main_client.clean_reported_streams().await;
     }
 }
+
+//TODO: cleanup
+//TODO: more log
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
@@ -49,8 +64,8 @@ async fn main() -> Result<(), anyhow::Error> {
     let bot_state = bot_init::init_app().await?;
     let holodex_api_key = bot_state.get_holodex_api_key();
     let timer_duration_sec = bot_state.get_timer_duration_sec();
-    // Create client for mobot
 
+    // Create client for mobot
     let client = mobot::Client::new(bot_state.get_telegram_bot_token());
     let mut router = mobot::Router::<config::MelatoninBotState>::new(client)
         .with_error_handler(error_handler)
