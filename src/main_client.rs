@@ -46,7 +46,11 @@ impl MainClient {
             .language(&[Language::English])
             .video_type(VideoType::Stream)
             .max_upcoming_hours(1)
-            .include(&[ExtraVideoInfo::Description, ExtraVideoInfo::ChannelStats])
+            .include(&[
+                ExtraVideoInfo::Description,
+                ExtraVideoInfo::ChannelStats,
+                ExtraVideoInfo::LiveInfo,
+            ])
             .sort_by(VideoSortingCriteria::StartScheduled)
             .status(&[holodex::model::VideoStatus::Upcoming])
             .limit(50)
@@ -56,8 +60,13 @@ impl MainClient {
             .unwrap()
             .into_iter()
             .filter(|x| {
-                x.available_at.naive_utc() - chrono::Utc::now().naive_utc()
-                    < chrono::Duration::minutes(22)
+                let is_passed = match x.live_info.start_scheduled {
+                    Some(start) => chrono::Utc::now().naive_utc() > start.naive_utc(),
+                    None => true,
+                };
+                !is_passed
+                    && x.available_at.naive_utc() - chrono::Utc::now().naive_utc()
+                        < chrono::Duration::minutes(22)
             })
             .collect()
     }
