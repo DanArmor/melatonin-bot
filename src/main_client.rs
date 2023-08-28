@@ -107,7 +107,7 @@ impl MainClient {
         // Get all users, that subscribed to this vtuber
         let users = sqlx::query_as!(
             crate::user::User,
-            r#"SELECT user.* FROM user JOIN user_vtuber ON user_vtuber.vtuber_id = ?"#,
+            r#"SELECT user.* FROM user JOIN user_vtuber ON user_vtuber.user_id = user.tg_user_id WHERE user_vtuber.vtuber_id = ?"#,
             stream.vtuber.id
         )
         .fetch_all(&self.get_pool())
