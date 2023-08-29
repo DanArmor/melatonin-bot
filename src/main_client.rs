@@ -122,7 +122,6 @@ impl MainClient {
         .fetch_all(&self.get_pool())
         .await
         .unwrap();
-
         // Notify every user
         for user in &users {
             // Get GMT+3 datetime
@@ -142,10 +141,13 @@ impl MainClient {
                     .with_caption(format!(
                         "Стрим {} {} начнется через \\~20 минут\n\
                         \n\
+                        Название: {}\n\
+                        \n\
                         [▶️ Ссылка на стрим](https://www.youtube.com/watch?v={})\n\
                         Начало: {:02}:{:02} \\(GMT\\+3 Europe/Moscow\\)",
                         stream.vtuber.first_name,
                         stream.vtuber.last_name,
+                        mobot::api::escape_md(&stream.video.title),
                         stream.video.id.to_string(),
                         local_date_gmt3.hour(),
                         local_date_gmt3.minute()

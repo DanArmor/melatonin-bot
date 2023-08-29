@@ -95,6 +95,7 @@ async fn main() -> Result<(), anyhow::Error> {
         })
         .await
         .unwrap();
+    info!("Setuped router");
 
     // Create client for fetching videos and notifying users
     let main_client = main_client::MainClient::new(
@@ -148,9 +149,12 @@ async fn main() -> Result<(), anyhow::Error> {
             mobot::Route::CallbackQuery(mobot::Matcher::Prefix(String::from("member_"))),
             crate::handlers::member_handler,
         );
+    info!("Routes were added");
     // Start notify-thread
     tokio::spawn(notify_users(main_client, timer_duration_sec));
+    info!("Fetching thread was started");
     // Start bot
+    info!("Bot was started");
     router.start().await;
     Ok(())
 }
