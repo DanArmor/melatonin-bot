@@ -30,6 +30,8 @@ pub struct Config {
     pub max_connections: u32,
     // Time between fetching of videos
     pub timer_duration_sec: u64,
+    // IP of monitoring service to send notification for admins
+    pub monitoring_ip: String
 }
 
 // Bot state, containts config data and pool of connections
@@ -63,6 +65,10 @@ impl MelatoninBotState {
     // Get sql connection pool
     pub fn get_pool(&self) -> Pool<Sqlite> {
         self.sql_pool.0.clone()
+    }
+    // Get monitoring IP
+    pub fn get_monitoring_ip(&self) -> String {
+        self.config.monitoring_ip.clone()
     }
     // Read data about NijiEN waves and save in database, if there are none
     pub async fn init_startup_data(&self) -> Result<(), anyhow::Error> {

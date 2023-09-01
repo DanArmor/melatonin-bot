@@ -18,6 +18,10 @@ pub struct MainClient {
     pub holodex_api: Arc<holodex::Client>,
     // Global sql connection pool
     sql_pool: MyPool,
+    // IP of monitoring service to send notification for admins
+    pub monitoring_ip: String,
+    // Client for requests
+    pub alert_client: Arc<reqwest::Client>,
 }
 
 pub struct VtuberVideo {
@@ -27,12 +31,26 @@ pub struct VtuberVideo {
     pub video: holodex::model::Video,
 }
 
+#[derive(serde::Serialize)]
+struct AlertRequest {
+    pub from: String,
+    pub theme: String,
+    pub text: String,
+}
+
 impl MainClient {
-    pub fn new(mobot_client: Arc<mobot::API>, holodex_client: Arc<holodex::Client>) -> Self {
+    pub fn new(
+        mobot_client: Arc<mobot::API>,
+        holodex_client: Arc<holodex::Client>,
+        monitoring_ip: String,
+        alert_client: Arc<reqwest::Client>,
+    ) -> Self {
         Self {
             tg_api: mobot_client,
             holodex_api: holodex_client,
             sql_pool: MyPool::default(),
+            monitoring_ip: monitoring_ip,
+            alert_client: alert_client,
         }
     }
     // Get sql pool
@@ -163,5 +181,18 @@ impl MainClient {
                 .await
                 .unwrap();
         }
+    }
+    pub async fn send_alert(&self, e: anyhow::Error) {
+        let req = self
+            .alert_client
+            .post(self.monitoring_ip.clone() + "notify/fire")
+            .json(&AlertRequest {
+                from: "melatonin-bot".to_owned(),
+                theme: "fire".to_owned(),
+                text: format!("{}", e),
+            })
+            .build()
+            .unwrap();
+        self.alert_client.execute(req).await.unwrap();
     }
 }

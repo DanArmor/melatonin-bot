@@ -34,6 +34,7 @@ async fn notify_users(main_client: MainClient, timer_duration_sec: u64) {
             Ok(v) => v,
             Err(e) => {
                 error!("Error during fetching: {}", e);
+                main_client.send_alert(e).await;
                 continue;
             }
         };
@@ -71,6 +72,8 @@ async fn main() -> Result<(), anyhow::Error> {
     let bot_state = bot_init::init_app().await?;
     let holodex_api_key = bot_state.get_holodex_api_key();
     let timer_duration_sec = bot_state.get_timer_duration_sec();
+    let monitoring_ip = bot_state.get_monitoring_ip();
+    let alert_client = Arc::new(reqwest::Client::new());
 
     // Create client for mobot
     let client = mobot::Client::new(bot_state.get_telegram_bot_token());
@@ -107,6 +110,8 @@ async fn main() -> Result<(), anyhow::Error> {
     let main_client = main_client::MainClient::new(
         router.api.clone(),
         Arc::new(holodex::Client::new(&holodex_api_key)?),
+        monitoring_ip,
+        alert_client.clone(),
     );
 
     // Add routes
