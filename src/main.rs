@@ -30,7 +30,13 @@ async fn notify_users(main_client: MainClient, timer_duration_sec: u64) {
         interval.tick().await;
         info!("Fetching videos");
 
-        let videos = main_client.associate_video_vtuber().await;
+        let videos = match main_client.associate_video_vtuber().await {
+            Ok(v) => v,
+            Err(e) => {
+                error!("Error during fetching: {}", e);
+                continue;
+            }
+        };
         info!("Final fetched amount: {}", videos.len());
         for stream in videos {
             match stream.video.channel.clone() {

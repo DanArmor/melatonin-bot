@@ -40,7 +40,7 @@ impl MainClient {
         self.sql_pool.0.clone()
     }
     // Get stream, that will start soon
-    pub fn get_videos(&self) -> Vec<holodex::model::Video> {
+    pub fn get_videos(&self) -> anyhow::Result<Vec<holodex::model::Video>> {
         let filter = VideoFilterBuilder::new()
             .organisation(Organisation::Nijisanji)
             .language(&[Language::English])
@@ -55,9 +55,9 @@ impl MainClient {
             .status(&[holodex::model::VideoStatus::Upcoming])
             .limit(50)
             .build();
-        self.holodex_api
-            .videos(&filter)
-            .unwrap()
+        Ok(self
+            .holodex_api
+            .videos(&filter)?
             .into_iter()
             .filter(|x| {
                 let is_passed = match x.live_info.start_scheduled {
@@ -68,7 +68,7 @@ impl MainClient {
                     && x.available_at.naive_utc() - chrono::Utc::now().naive_utc()
                         < chrono::Duration::minutes(22)
             })
-            .collect()
+            .collect())
     }
     // Remove passed streams that users have been notified about
     pub async fn clean_reported_streams(&self) {
@@ -87,7 +87,7 @@ impl MainClient {
         }
     }
     // Associate fetched videos with vtubers. Drop videos, that don't belong to any vtuber in db
-    pub async fn associate_video_vtuber(&self) -> Vec<VtuberVideo> {
+    pub async fn associate_video_vtuber(&self) -> anyhow::Result<Vec<VtuberVideo>> {
         // Fetch vector of vtubers
         let vtubers = sqlx::query_as!(crate::vtuber::Vtuber, "SELECT * FROM vtuber")
             .fetch_all(&self.get_pool())
@@ -95,7 +95,8 @@ impl MainClient {
             .unwrap();
 
         // Connect videos with vtubers. Filter out videos, that don't belong to any vtuber in db
-        self.get_videos()
+        Ok(self
+            .get_videos()?
             .into_iter()
             .filter_map(|video| {
                 match vtubers
@@ -109,7 +110,7 @@ impl MainClient {
                     None => None,
                 }
             })
-            .collect()
+            .collect())
     }
     // Notify all subscribed users about the stream
     pub async fn send_notification(&self, stream: VtuberVideo) {
