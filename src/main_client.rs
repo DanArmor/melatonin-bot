@@ -130,6 +130,17 @@ impl MainClient {
             })
             .collect())
     }
+    // Pick ending for 'минут/а/у' in Russian
+    fn pick_ending(&self, n: i64) -> &'static str {
+        let endings = &["у", "ы", ""];
+        let n = n % 100;
+        match n {
+            n if n >= 11 && n <= 19 => endings[2],
+            n if n % 10 == 1 => endings[0],
+            n if [2, 3, 4].contains(&(n % 10)) => endings[1],
+            _ => endings[2]
+        }
+    }
     // Notify all subscribed users about the stream
     pub async fn send_notification(&self, stream: VtuberVideo) {
         // Get all users, that subscribed to this vtuber
@@ -146,6 +157,7 @@ impl MainClient {
             // Get GMT+3 datetime
             let local_date_gmt3 =
                 stream.video.available_at.naive_utc() + chrono::Duration::hours(3);
+            let time_left = (stream.video.available_at.naive_utc() - chrono::Utc::now().naive_utc()).num_minutes();
             // Send thumbnail and text-message
             let res = self
                 .tg_api
@@ -158,7 +170,7 @@ impl MainClient {
                         ),
                     )
                     .with_caption(format!(
-                        "Стрим {} {} начнется через \\~20 минут\n\
+                        "Стрим {} {} начнется через \\~{} минут{}\n\
                         \n\
                         Название: {}\n\
                         \n\
@@ -166,6 +178,8 @@ impl MainClient {
                         Начало: {:02}:{:02} \\(GMT\\+3 Europe/Moscow\\)",
                         stream.vtuber.first_name,
                         stream.vtuber.last_name,
+                        time_left,
+                        self.pick_ending(time_left),
                         mobot::api::escape_md(&stream.video.title),
                         stream.video.id.to_string(),
                         local_date_gmt3.hour(),
