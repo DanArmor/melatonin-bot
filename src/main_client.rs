@@ -199,7 +199,7 @@ impl MainClient {
     pub async fn send_alert(&self, e: anyhow::Error) {
         let req = self
             .alert_client
-            .post(self.monitoring_ip.clone() + "notify/fire")
+            .post(self.monitoring_ip.clone() + "/notify/fire")
             .json(&AlertRequest {
                 from: "melatonin-bot".to_owned(),
                 theme: "fire".to_owned(),
